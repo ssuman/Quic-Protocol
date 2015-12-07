@@ -14,15 +14,26 @@ import java.util.Map;
 import Segment.Segment;
 import utils.RequestToBlocks;
 
-public class GetRequestHandler implements Handler<Segment> {
+public class GetRequestHandler {
 
+	// BYTE COUNT -block size of each packet
 	private static final int BYTE_COUNT = 1500;
+	// path of the GET file
 	String path;
+	// HTTP GET method
 	String method;
+	// HTTP version
 	String schemaAndVersion;
+	// Host name
 	String origin;
 	Map<String, RequestToBlocks> connectionToResponse;
 
+	/**
+	 * Calling the constructor for the get request handler.
+	 * As a parameter 
+	 * 
+	 * @param connectionToResponse	ConnectionId -> <File -> blocks>	
+	 */
 	public GetRequestHandler(Map<String, RequestToBlocks> connectionToResponse) {
 		this.connectionToResponse = connectionToResponse;
 	}
@@ -32,13 +43,22 @@ public class GetRequestHandler implements Handler<Segment> {
 	}
 
 	
-	@Override
-	public void handle(Segment seg) throws IOException {
+
+	/**
+	 * Handle the get request by parsing the segment data.
+	 * Also, read the file and make blocks. 
+	 * Maintain a fileID -> list of blocks map.
+	 * @param seg
+	 * @return
+	 * @throws IOException
+	 */
+	public String handle(Segment seg) throws IOException {
 		parseReq(seg.data);
 		List<ByteBuffer> list = readFileAndMakeBlocks();
 		RequestToBlocks  req = new RequestToBlocks(new HashMap<>());
 		req.requestToByteBuffer.put(path, list);
 		connectionToResponse.put(seg.connectionId, req);
+		return path;
 	}
 
 	/***

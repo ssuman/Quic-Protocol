@@ -5,15 +5,18 @@ import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
 import java.util.ArrayDeque;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
 
 import handler.Handler;
 
-public class ReadHandler implements Handler<SelectionKey> {
+public class ClientReadHandler implements Handler<SelectionKey> {
 
-	public ReadHandler() {
-		
+	static Map<DatagramChannel, Queue<ByteBuffer>> pendingData = new HashMap<>();
+	
+	public ClientReadHandler(Map<DatagramChannel, Queue<ByteBuffer>> pendingData) {
+		this.pendingData = pendingData;
 	}
 
 	@Override

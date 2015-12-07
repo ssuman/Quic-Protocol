@@ -34,9 +34,9 @@ public class TCPServer {
 	 * @throws ClassNotFoundException
 	 */
 	public static void main(String[] args) throws IOException, ClassNotFoundException {
-		if (args.length != 2) {
-			System.out.println("Usage: java TCPServer");
-		}
+//		if (args.length != 2) {
+//			System.out.println("Usage: java TCPServer");
+//		}
 		TCPServer server = new TCPServer();
 		Selector sel = server.start();
 		server.receiveRequest(sel);
@@ -63,11 +63,9 @@ public class TCPServer {
 				SelectionKey key = keyIter.next();
 				keyIter.remove();
 				if (key.isReadable()) {
-					
 					new ServerReadHandler().handle(key);
 					
 				} else if (key.isWritable()) {
-					
 					new ServerWriterHandler().handle(key);
 				}
 			}

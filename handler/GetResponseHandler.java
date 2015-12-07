@@ -13,18 +13,20 @@ public class GetResponseHandler implements Handler<Map<String, RequestToBlocks>>
 
 	String connectionId;
 	Connection connection;
-	List<ByteBuffer> buf;
-	
+	List<Segment> buf;
+	String path;
 	/**
 	 * Constructor for Get Response Handler. 
 	 * @param buf 
 	 * @param connectionId		Connection ID for a client.
 	 * @param con				Connection associated with a client.
+	 * @param path 
 	 */
-	public GetResponseHandler(List<ByteBuffer> buf, String connectionId, Connection con) {
+	public GetResponseHandler(List<Segment> buf, String connectionId, Connection con, String path) {
 		this.connectionId = connectionId;
 		this.connection = con;
 		this.buf = buf;
+		this.path = path;
 	}
 
 	/**
@@ -37,9 +39,9 @@ public class GetResponseHandler implements Handler<Map<String, RequestToBlocks>>
 	public void handle(Map<String, RequestToBlocks> connectionToResponse) throws IOException {
 		RequestToBlocks listByteBuffer = connectionToResponse.get(connectionId);
 		
-		if(connection.CWND < connection.SSTHRESH){
+		if(connection.SND_CWND < connection.SSTHRESH){
 			//TODO: Decide on the file format.
-			new SlowStartHandler("",connection, buf).handle(listByteBuffer);
+			new SlowStartHandler(path,connection, buf).handle(listByteBuffer);
 		}else{
 			new CongestionAvoidanceHandler();
 		}

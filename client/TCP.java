@@ -38,11 +38,11 @@ public class TCP {
 				SelectionKey key = iter.next();
 				iter.remove();
 				if (key.isReadable()) {
-					//new ReadHandler(pendingData).handle(key);
+					new ClientReadHandler(pendingData).handle(key);
 
 				} else if (key.isWritable()) {
 
-					new WriteHandler(pendingData).handle(key);
+					new ClientWriteHandler(pendingData).handle(key);
 				}
 			}
 		}

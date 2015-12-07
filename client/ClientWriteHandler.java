@@ -15,15 +15,15 @@ import java.util.Queue;
 
 import handler.Handler;
 
-public class WriteHandler implements Handler<SelectionKey> {
+public class ClientWriteHandler implements Handler<SelectionKey> {
 
 	private final Map<DatagramChannel, Queue<ByteBuffer>> pendingData;
 	
-	public WriteHandler(Map<DatagramChannel, Queue<ByteBuffer>> pendingData) {
+	public ClientWriteHandler(Map<DatagramChannel, Queue<ByteBuffer>> pendingData) {
 		this.pendingData = pendingData;
 	}
 	
-	public WriteHandler() {
+	public ClientWriteHandler() {
 		this.pendingData = new HashMap<>();
 	}
 

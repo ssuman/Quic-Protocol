@@ -2,12 +2,11 @@ package Segment;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectInput;
 import java.io.ObjectInputStream;
-import java.io.ObjectOutput;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import server.Flags;
 
@@ -25,6 +24,7 @@ public class Segment implements Serializable{
 	public int windowSize;
 	public int checksum;
 	public byte[] data = new byte[1024];
+	public List<Integer> NACKs ;
 	
 	public Segment() {
 		
