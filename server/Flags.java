@@ -1,5 +1,5 @@
 package server;
 
 public enum Flags {
-	CHLO, SHLO, REJ, ACK,DATA, REQ, PING
+	CHLO, SHLO, REJ, ACK,DATA, REQ, PING, FIN
 }

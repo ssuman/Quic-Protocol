@@ -51,7 +51,11 @@ public class SlowStartHandler extends CongestionControl implements Handler<Reque
 				Segment seg = new Segment();
 				seg.sequenceNbr = i;
 				seg.flag =Flags.DATA;
-				seg.data = blocks.get(i).array();
+				ByteBuffer buffer =blocks.get(i);
+				System.out.println("Limit is:" + buffer.limit());
+				seg.data = new byte[buffer.limit()];
+				buffer.get(seg.data);
+				seg.NACKs = new ArrayList<>();
 				sendBuf.add(seg);
 			}
 		}

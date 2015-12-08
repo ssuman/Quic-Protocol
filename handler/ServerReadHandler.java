@@ -13,23 +13,18 @@ import server.State;
 import server.UnAckedMap;
 
 public class ServerReadHandler implements Handler<SelectionKey> {
-
-	static UnAckedMap unAckMap = new UnAckedMap();
-	static Map<Integer, Integer> ackMap = new HashMap<>();
 	
-	public static State state;
 	
 	private final Map<DatagramChannel, Queue<ByteBuffer>> pendingData;
 	
-	public ServerReadHandler() {
-		this.pendingData = new HashMap<>();
-		ServerReadHandler.state = State.SLOW;
+	public ServerReadHandler(Map<DatagramChannel, Queue<ByteBuffer>> pendingData) {
+		this.pendingData = pendingData;
 	}
 
 	@Override
 	public void handle(SelectionKey key) throws IOException {
 		
-		ByteBuffer buffer = ByteBuffer.allocate(1500);
+		ByteBuffer buffer = ByteBuffer.allocate(3000);
 		DatagramChannel channel = (DatagramChannel) key.channel();
 		channel.configureBlocking(false);
 		SocketAddress addr = channel.receive(buffer);

@@ -6,13 +6,15 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 import server.Flags;
 
 public class Segment implements Serializable{
 
-	public String connectionId;
+	private static final long serialVersionUID = 1L;
+	
 	public int sourcePort;
 	public int destPort;
 	public String sourceIPAddr;
@@ -23,8 +25,11 @@ public class Segment implements Serializable{
 	public Flags flag;
 	public int windowSize;
 	public int checksum;
-	public byte[] data = new byte[1024];
-	public List<Integer> NACKs ;
+	public List<Integer> NACKs;
+	public String connectionId;
+	public byte[] data;
+	public String filename;
+	
 	
 	public Segment() {
 		
@@ -45,6 +50,8 @@ public class Segment implements Serializable{
 		this.windowSize = windowSize;
 		this.checksum = checksum;
 		this.data = data;
+		this.NACKs = new ArrayList<>();
+		
 	}
 	
 	

@@ -20,7 +20,6 @@ import handler.ServerWriterHandler;
 public class TCPServer {
 
 	static Map<DatagramChannel, Queue<ByteBuffer>> pendingData = new HashMap<>();
-	final static int BUFFER_SIZE = 1000;
 	final static int PORT_NUM = 8001;
 
 	public TCPServer() {
@@ -49,6 +48,7 @@ public class TCPServer {
 		DatagramSocket socket = channel.socket();
 		socket.bind(address);
 		Selector selector = Selector.open();
+		channel.register(selector, SelectionKey.OP_READ);
 		return selector;
 	}
 
@@ -63,10 +63,10 @@ public class TCPServer {
 				SelectionKey key = keyIter.next();
 				keyIter.remove();
 				if (key.isReadable()) {
-					new ServerReadHandler().handle(key);
+					new ServerReadHandler(pendingData).handle(key);
 					
 				} else if (key.isWritable()) {
-					new ServerWriterHandler().handle(key);
+					new ServerWriterHandler(pendingData).handle(key);
 				}
 			}
 		}

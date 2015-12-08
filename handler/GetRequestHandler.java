@@ -77,8 +77,8 @@ public class GetRequestHandler {
 		int bytesRead = 0;
 		while ((bytesRead = fChannel.read(buffer)) != -1) {
 			buffer.flip();
-			byte[] bytes = new byte[BYTE_COUNT];
-			buffer.get(bytes, 0, buffer.limit());
+			byte[] bytes = new byte[buffer.limit()];
+			buffer.get(bytes);
 			ByteBuffer newBuffer = ByteBuffer.wrap(bytes);
 			queue.add(newBuffer);
 			buffer.clear();
@@ -98,7 +98,7 @@ public class GetRequestHandler {
 	 * @param data
 	 */
 	private void parseReq(byte[] data) {
-		String str = new String(data, StandardCharsets.UTF_8);
+		String str = new String(data);
 		String[] arr = str.split("\n");
 		String[] firstLine = arr[0].split(" ");
 		String method = firstLine[0];
@@ -107,6 +107,9 @@ public class GetRequestHandler {
 		this.path = path;
 		this.method = method;
 		this.schemaAndVersion = schemaAndVersion;
+		System.out.println(this.path);
+		System.out.println(this.method);
+		System.out.println(this.schemaAndVersion);
 		//TODO: Create other header fields too.
 		/*
 		 * for(int i=1; i< arr.length; i++){ if() }

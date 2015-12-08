@@ -21,7 +21,7 @@ import utils.RequestToBlocks;
 public class ServerWriterHandler implements Handler<SelectionKey> {
 
 	// Channel to a Queue ByteBuffer.
-	private final Map<DatagramChannel, Queue<ByteBuffer>> pendingData = new HashMap<>();
+	private final Map<DatagramChannel, Queue<ByteBuffer>> pendingData;
 
 	// Connection ID to a Connection.
 	final static Map<String, Connection> connections = new HashMap<>();
@@ -29,10 +29,11 @@ public class ServerWriterHandler implements Handler<SelectionKey> {
 	// Connection ID to a list of byte buffers of a file
 	final static Map<String, RequestToBlocks> connectionToResponse = new HashMap<>();
 
-	
+	String connectionId ="";
 	String filename = "";
 	
-	public ServerWriterHandler() {
+	public ServerWriterHandler(Map<DatagramChannel, Queue<ByteBuffer>> pendingData) {
+		this.pendingData = pendingData;
 	}
 	
 
@@ -45,9 +46,8 @@ public class ServerWriterHandler implements Handler<SelectionKey> {
 
 		DatagramChannel channel = (DatagramChannel) key.channel();
 		Queue<ByteBuffer> queue = pendingData.get(channel);
-		SocketAddress address = (SocketAddress) channel.getRemoteAddress();
+		SocketAddress address = (SocketAddress) key.attachment();
 		ByteBuffer buffer = queue.poll();
-		this.filename = (String) key.attachment();
 		Segment segment = null;
 		try {
 			segment = Segment.deserializeBytes(buffer);
@@ -56,7 +56,7 @@ public class ServerWriterHandler implements Handler<SelectionKey> {
 
 			e.printStackTrace();
 		}
-
+		filename = segment.filename;
 		switch (segment.flag) {
 
 		case CHLO:
@@ -93,9 +93,10 @@ public class ServerWriterHandler implements Handler<SelectionKey> {
 		// segment acknowledge number
 		Segment seg = new Segment();
 		seg.flag = Flags.SHLO;
-		seg.data = null;
+		seg.NACKs = new ArrayList<>();
 		seg.acknowledgementNbr = segment.sequenceNbr;
-		// sendData(seg, address, channel);
+		seg.connectionId = segment.connectionId;
+		sendData(seg, address, channel);
 	}
 
 	/***
@@ -118,15 +119,18 @@ public class ServerWriterHandler implements Handler<SelectionKey> {
 	private void onREQ(DatagramChannel channel, Segment segment, SocketAddress address) throws IOException {
 		Connection conn = connections.get(segment.connectionId);
 		conn.address = address;
+		System.out.println(address);
 		String path = new GetRequestHandler(connectionToResponse).handle(segment);
+		System.out.println(path);
+		this.connectionId = segment.connectionId;
 		List<Segment> buf = new ArrayList<>();
 		new GetResponseHandler(buf, segment.connectionId, conn, path).handle(connectionToResponse);
-		RequestToBlocks req = connectionToResponse.get(segment.connectionId);
 		sendBlocks(buf, segment, address,channel);
 	}
 
 	/**
 	 * On receiving an ACK check for duplicate packets.
+	 * TODO: Configure filename.txt
 	 * 
 	 * @param channel
 	 * @param segment
@@ -135,13 +139,19 @@ public class ServerWriterHandler implements Handler<SelectionKey> {
 	 */
 	private void onACK(DatagramChannel channel, Segment segment, SocketAddress address) throws IOException {
 		Connection conn = connections.get(segment.connectionId);
+		
 		conn.address = address;
 		RequestToBlocks req = connectionToResponse.get(segment.connectionId);
-		//TODO REMOVE:
-		filename = "hello.txt";
+		
 		if(req.unAckedPack.containsKey(segment.acknowledgementNbr)){
 			req.unAckedPack.remove(segment.acknowledgementNbr);
 			determineState(conn, segment, req);
+		}
+		
+		if(req.unAckedPack.size() == 0 && 
+				conn.SND_UNA == req.requestToByteBuffer.get(filename).size()-1){
+			sendFin(channel, segment, address);
+			return;
 		}
 		
 		List<Segment> buf = new ArrayList<>();
@@ -159,6 +169,7 @@ public class ServerWriterHandler implements Handler<SelectionKey> {
 				Segment seg = new Segment();
 				seg.sequenceNbr = missing;
 				seg.flag = Flags.DATA;
+				seg.NACKs = new ArrayList<>();
 				seg.data = req.getUnAckedPacket(filename, missing).array();
 				buf.add(seg);
 			}
@@ -172,15 +183,28 @@ public class ServerWriterHandler implements Handler<SelectionKey> {
 
 	}
 	
+	private void sendFin(DatagramChannel channel, Segment segment, SocketAddress address) 
+			throws IOException {
+		Segment seg = new Segment();
+		seg.connectionId = connectionId;
+		seg.filename = filename;
+		seg.flag = Flags.FIN;
+		seg.data = null;
+		byte[] bytes = Segment.serializeToBytes(seg);
+		ByteBuffer buffer = ByteBuffer.wrap(bytes);
+		channel.send(buffer, address);
+	}
+
+
 	public void sendBlocks(List<Segment> buf, Segment segment, SocketAddress address, 
 			DatagramChannel channel) throws IOException{
 		RequestToBlocks req = connectionToResponse.get(segment.connectionId);
 		
 		for( Segment seg : buf){
 			System.out.println("Sending Segments: "+ seg.sequenceNbr);
-			
+			seg.connectionId = this.connectionId;
 			req.unAckedPack.put(seg.sequenceNbr, 0);
-			//sendData(seg, address, channel);
+			sendData(seg, address, channel);
 		}
 	}
 
@@ -234,7 +258,8 @@ public class ServerWriterHandler implements Handler<SelectionKey> {
 	 * @throws IOException
 	 */
 	public static void main(String[] args) throws IOException {
-		ServerWriterHandler swh = new ServerWriterHandler();
+		Map<DatagramChannel, Queue<ByteBuffer>> pendingData = new HashMap<>();
+		ServerWriterHandler swh = new ServerWriterHandler(pendingData);
 		DatagramChannel ch = DatagramChannel.open();
 		Segment seg = new Segment();
 		SocketAddress add = new InetSocketAddress(8000);
