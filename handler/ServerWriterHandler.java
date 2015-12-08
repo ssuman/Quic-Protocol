@@ -68,12 +68,37 @@ public class ServerWriterHandler implements Handler<SelectionKey> {
 		case ACK:
 			onACK(channel, segment, address);
 			break;
+		case PING:
+			onPING(channel, segment, address);
+			break;
 		default:
 			break;
 
 		}
 		key.interestOps(SelectionKey.OP_READ);
 	}
+
+	/**
+	 * On Ping retreive resend the packets from the last seen sequence number sent by client.
+	 * As the client might have lost few packets.
+	 * 
+	 * @param channel
+	 * @param segment
+	 * @param address
+	 * @throws IOException 
+	 */
+	private void onPING(DatagramChannel channel, Segment segment, SocketAddress address) throws IOException {
+		RequestToBlocks request = connectionToResponse.get(segment.connectionId);
+		List<ByteBuffer> buf = request.requestToByteBuffer.get(segment.filename);
+		Connection con = connections.get(segment.connectionId);
+		int SND_UNA = con.SND_UNA;
+		int start = segment.sequenceNbr;
+		for(int i=start; i <=SND_UNA;i++){
+			channel.send(buf.get(i), address);
+		}
+		
+	}
+
 
 	/**
 	 * First time a request a received with CHLO flag. The following function is
@@ -196,6 +221,15 @@ public class ServerWriterHandler implements Handler<SelectionKey> {
 	}
 
 
+	/**
+	 * Send blocks to client. Also put the sequence numbers in the un-acked list.
+	 * Will be removed as soon as an ack is received.
+	 * @param buf			List of buffer 
+	 * @param segment		Received Segment from the client
+	 * @param address		Socket Address of the client
+	 * @param channel		Channel for the connection
+	 * @throws IOException
+	 */
 	public void sendBlocks(List<Segment> buf, Segment segment, SocketAddress address, 
 			DatagramChannel channel) throws IOException{
 		RequestToBlocks req = connectionToResponse.get(segment.connectionId);

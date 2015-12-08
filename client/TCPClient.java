@@ -1,6 +1,7 @@
 package client;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
@@ -8,6 +9,7 @@ import java.nio.channels.ClosedChannelException;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -28,7 +30,8 @@ public class TCPClient {
 	private static Map<DatagramChannel, Queue<ByteBuffer>> pendingData = new HashMap<>();
 	static String connectionId = UUID.randomUUID().toString();
 	static SocketAddress address;
-
+	static InetAddress localAddress;
+	
 	public static void main(String[] args) throws IOException {
 
 		TCPClient client = new TCPClient();
@@ -39,6 +42,8 @@ public class TCPClient {
 		}
 		String filename = args[0];
 		String output = args[1];
+		ExecutorService service = Executors.newFixedThreadPool(10);
+		localAddress = InetAddress.getLocalHost();
 		
 		DatagramChannel channel = DatagramChannel.open();
 		channel.configureBlocking(false);
@@ -49,8 +54,42 @@ public class TCPClient {
 		System.out.println("CHLO sent");
 		client.sendRequest(channel, filename);
 		client.receiveRequest(channel, selector, filename, output);
+		
+		// Create a background Thread for the checking Ip Address changes.
+		service.submit(() -> {
+			// Threads checks for the changes every 500 milliseconds.
+			while(true){
+				InetAddress newAddr = InetAddress.getLocalHost();
+				if(!localAddress.equals(newAddr)){
+					// If the ip address has changed send a PING request.
+					// And send the last seen sequence number.
+					Segment segment = new Segment();
+					Collections.sort(ClientWriteHandler.blocks);
+					segment.acknowledgementNbr =
+							ClientWriteHandler.blocks.get(
+									ClientWriteHandler.blocks.size()-1).seqNbr;
+					// Use the same connection ID.
+					segment.connectionId = connectionId;
+					segment.filename = filename;
+					// Use the Flag as Flags.PING
+					segment.flag = Flags.PING;
+					byte[] bytes = Segment.serializeToBytes(segment);
+					ByteBuffer buffer = ByteBuffer.wrap(bytes);
+					// send it to the server.
+					channel.send(buffer, address);
+				}
+				Thread.sleep(500);
+			}
+		});
 	}
 
+	/***
+	 * Send GET Requests to Server.
+	 * 
+	 * @param channel			Channel for the connection.
+	 * @param filename			
+	 * @throws IOException
+	 */
 	private void sendRequest(DatagramChannel channel, String filename) throws IOException {
 		Segment seg = new Segment();
 		seg.flag = Flags.REQ;
