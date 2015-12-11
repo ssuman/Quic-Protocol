@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.channels.DatagramChannel;
 import java.nio.channels.FileChannel;
@@ -42,10 +43,7 @@ public class ClientWriteHandler implements Handler<SelectionKey> {
 		DatagramChannel channel = (DatagramChannel) key.channel();
 		Queue<ByteBuffer> queue = pendingData.get(channel);
 		SocketAddress address = (SocketAddress) key.attachment();
-		System.out.println(address);
 		ByteBuffer buffer = queue.poll();
-		System.out.println(buffer.position());
-		System.out.println(buffer.limit());
 		Segment segment = null;
 		try {
 			segment = Segment.deserializeBytes(buffer);
@@ -91,21 +89,33 @@ public class ClientWriteHandler implements Handler<SelectionKey> {
 		byte[] data = segment.data;
 
 		ByteBuffer buffer = ByteBuffer.wrap(data);
+		for(Blocks b : blocks){
+			if(b.seqNbr == segment.sequenceNbr){
+				return;
+			}
+		}
 		blocks.add(new Blocks(segment.sequenceNbr, buffer));
 		Collections.sort(blocks);
 		Segment seg = new Segment();
 		seg.flag = Flags.ACK;
 		seg.connectionId = TCPClient.connectionId;
 		seg.NACKs = findNacks();
+		System.out.println(seg.NACKs);
 		seg.filename = filename;
 		seg.acknowledgementNbr = blocks.get(blocks.size() - 1).seqNbr;
+		System.out.println("Sending Acknowledgement for:" + seg.acknowledgementNbr);
 		byte[] bytes = Segment.serializeToBytes(seg);
 		ByteBuffer sendBuf = ByteBuffer.wrap(bytes);
+		try{
 		channel.send(sendBuf, address);
+		}catch(SocketException s){
+			
+		}
 
 	}
 
 	private List<Integer> findNacks() {
+	
 		List<Integer> temp = new ArrayList<>();
 		for (int i = 1; i < blocks.size(); i++) {
 			int seq1 = blocks.get(i - 1).seqNbr;

@@ -93,7 +93,9 @@ public class ServerWriterHandler implements Handler<SelectionKey> {
 		Connection con = connections.get(segment.connectionId);
 		int SND_UNA = con.SND_UNA;
 		int start = segment.sequenceNbr;
-		for(int i=start; i <=SND_UNA;i++){
+		for(int i=start; i<request.requestToByteBuffer.get(segment.filename).size() && i <=SND_UNA;i++){
+			System.out.println(address);
+			System.out.println(start +" "+ i+ " "+ SND_UNA);
 			channel.send(buf.get(i), address);
 		}
 		
@@ -173,8 +175,8 @@ public class ServerWriterHandler implements Handler<SelectionKey> {
 			determineState(conn, segment, req);
 		}
 		
-		if(req.unAckedPack.size() == 0 && 
-				conn.SND_UNA == req.requestToByteBuffer.get(filename).size()-1){
+		if(segment.NACKs.size() == 0 && 
+				segment.acknowledgementNbr == req.requestToByteBuffer.get(filename).size()-1){
 			sendFin(channel, segment, address);
 			return;
 		}
@@ -191,6 +193,7 @@ public class ServerWriterHandler implements Handler<SelectionKey> {
 		case SLOW:
 			conn.updateSenderWindow();
 			for(int missing : segment.NACKs){
+				System.out.println("Missing ACKS:"+ missing);
 				Segment seg = new Segment();
 				seg.sequenceNbr = missing;
 				seg.flag = Flags.DATA;

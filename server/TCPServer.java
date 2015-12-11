@@ -33,9 +33,9 @@ public class TCPServer {
 	 * @throws ClassNotFoundException
 	 */
 	public static void main(String[] args) throws IOException, ClassNotFoundException {
-//		if (args.length != 2) {
-//			System.out.println("Usage: java TCPServer");
-//		}
+		//		if (args.length != 2) {
+		//			System.out.println("Usage: java TCPServer");
+		//		}
 		TCPServer server = new TCPServer();
 		Selector sel = server.start();
 		server.receiveRequest(sel);
